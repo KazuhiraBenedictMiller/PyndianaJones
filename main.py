@@ -1,269 +1,109 @@
-
-'''
+# Importing Necessary Libraries
+from agno.agent import RunResponse
+from utils.Agents import DMs
 from rich.console import Console
-from rich.panel import Panel
-
-import os
-from dotenv import load_dotenv
-
-from agno.agent import Agent, RunResponse
-from agno.models.google import Gemini
-
-from agno.memory.v2.db.sqlite import SqliteMemoryDb
-from agno.memory.v2.memory import Memory
-from agno.storage.sqlite import SqliteStorage
-
-
-# Initializing Console
-console = Console()
-
-# Space for Readability
-console.print("")
-
-# Defining Style for Main Entry and Displaying Welcome
-style = "bold white on orange4"
-console.print(Panel("Welcome to Pyndiana Jones.\nYou Are an Explorer in the 1930s and You will Have to Solve Puzzles and Enigmas by Coding in Python.", title = "Pyndiana Jones"),  style = style, justify = "center")
-
-# Space for Readability
-console.print("")
-
-# Asking the User if it Wants to Play a New Game
-
-# If the Sessions Directory does Not Exists, Create it
-if not os.path.exists("./Sessions"):
-    os.mkdir("./Sessions")
-
-answer = False
-
-while answer not in ["yes", "no", "y", "n"]: 
-    answer = console.input("[bold white]:smiley: Would You Like to Start a New Game? (Yes/No) [/]")
-
-    if answer.lower() not in ["yes", "no", "y", "n"]: 
-        console.print("[bold white]Only Yes, No, Y, N Are Accepted as Answers[/]")
-        console.print("")
-
-console.print("")
-
-# Initialize storage for both agent sessions and memories
-agent_storage = SqliteStorage(table_name="agent_memories", db_file="Sessions/agents.db")
-
-
-load_dotenv()
-os.environ.get("GOOGLE_API_KEY")
-
-
-import json
-from textwrap import dedent
-from typing import Optional
-
-import typer
-from agno.agent import Agent
-
-
-from agno.memory.v2.db.sqlite import SqliteMemoryDb
-from agno.memory.v2.memory import Memory
-from agno.storage.sqlite import SqliteStorage
-
-
-from rich.console import Console
-from rich.json import JSON
-from rich.panel import Panel
-from rich.prompt import Prompt
-
-agent = Agent(model=Gemini(id = "gemini-2.0-flash-exp"), markdown = True, add_history_to_messages = True, num_history_responses = 3,
-#Configure memory system with SQLite storage
-        memory=Memory(
-            db=SqliteMemoryDb(
-                table_name="agent_memory",
-                db_file="Sessions/agent_memory.db",
-            ),
-        ),
-        enable_user_memories=True,
-        enable_session_summaries=True,
-        storage=agent_storage,
-        # Enhanced system prompt for better personality and memory usage
-        description = """\
-        You are a helpful and friendly AI assistant with excellent memory.
-        - Remember important details about users and reference them naturally
-        - Maintain a warm, positive tone while being precise and helpful
-        - When appropriate, refer back to previous conversations and memories
-        - Always be truthful about what you remember or don't remember"""
-    )
-
-run: RunResponse = agent.run("Tell me a Joke")
-console.print(run.content)
-
-
-# Print user memories
-for user_id in list(agent.memory.memories.keys()):
-    console.print(
-        Panel(
-            JSON(
-                json.dumps(
-                [
-                    user_memory.to_dict()
-                    for user_memory in agent.memory.get_user_memories(user_id=user_id)
-                ],
-                    indent=4,
-                ),
-            ),
-            title=f"Memories for user_id: {user_id}",
-            expand=True,
-        )
-    )
-# Print session summary
-for user_id in list(agent.memory.summaries.keys()):
-    console.print(
-        Panel(
-            JSON(
-                json.dumps(
-                    [
-                        summary.to_dict()
-                        for summary in agent.memory.get_session_summaries(user_id=user_id)
-                    ],
-                    indent=4,
-                ),
-            ),
-            title=f"Summary for session_id: {agent.session_id}",
-            expand=True,
-        )
-    )
-
-
-# console.input("What is [i]your[/i] [bold red]name[/]? :smiley: ")
-
-'''
-
-import json
-from textwrap import dedent
-from typing import Optional
-
-import typer
-from agno.agent import Agent
-from agno.memory.v2.db.sqlite import SqliteMemoryDb
-from agno.memory.v2.memory import Memory
-from agno.storage.sqlite import SqliteStorage
-from rich.console import Console
-from rich.json import JSON
+from rich.markdown import Markdown
+from rich.box import HEAVY
 from rich.panel import Panel
 from rich.prompt import Prompt
 import os
 from dotenv import load_dotenv
-from agno.models.google import Gemini
+import subprocess
 
-
+# Loading Env Variables
 load_dotenv()
 os.environ.get("GOOGLE_API_KEY")
 
-# Initialize storage for both agent sessions and memories
-agent_storage = SqliteStorage(table_name="agent_memories", db_file="tmp/agents.db")
-
-agent = Agent(
-    model=Gemini(id = "gemini-2.0-flash-exp"),
-    user_id=user,
-    session_id=session_id,
-    # Configure memory system with SQLite storage
-    memory=Memory(
-        db=SqliteMemoryDb(
-            table_name="agent_memory",
-            db_file="tmp/agent_memory.db",
-        ),
-    ),
-    enable_user_memories=True,
-    enable_session_summaries=True,
-    storage=agent_storage,
-    add_history_to_messages=True,
-    num_history_responses=3,
-    # Enhanced system prompt for better personality and memory usage
-    description=dedent("""\
-        You are a helpful and friendly AI assistant with excellent memory.
-        - Remember important details about users and reference them naturally
-        - Maintain a warm, positive tone while being precise and helpful
-        - When appropriate, refer back to previous conversations and memories
-        - Always be truthful about what you remember or don't remember"""),
-    )
-
-if session_id is None:
-    session_id = agent.session_id
-    if session_id is not None:
-        print(f"Started Session: {session_id}\n")
-    else:
-        print("Started Session\n")
-else:
-    print(f"Continuing Session: {session_id}\n")
-
-
+# Instantiating Console Object
 console = Console()
 
-messages = []
-session_id = agent.session_id
-session_run = agent.memory.runs[session_id][-1]
-for m in session_run.messages:
-    message_dict = m.to_dict()
-    messages.append(message_dict)
+# Defining Welcome Message
+Intro = Markdown("""
+### Welcome to Pyndiana Jones!
 
+This is a Roguelike, Text Based, and AI-Generated Game where You will Play as **Indiana Jones** - or _Indy_ - to Solve Enigmas in the form of Python Coding Challenges while You Progress Throughout the Narrative.
 
-# Print chat history
-console.print(
-        Panel(
-            JSON(
-                json.dumps(
-                    messages,
-                ),
-                indent=4,
-            ),
-            title=f"Chat History for session_id: {session_run.session_id}",
-            expand=True,
-        )
-    )
+There is No Right or Wrong Answer, your Successes and Mistakes will Shape the Narrative!
 
-    # Print user memories
-for user_id in list(agent.memory.memories.keys()):
-    console.print(
-            Panel(
-                JSON(
-                    json.dumps(
-                    [
-                        user_memory.to_dict()
-                        for user_memory in agent.memory.get_user_memories(user_id=user_id)
-                    ],
-                        indent=4,
-                    ),
-                ),
-                title=f"Memories for user_id: {user_id}",
-                expand=True,
-            )
-        )
+**Here is a List of Useful Commands (Inputs):**
 
-    # Print session summary
-for user_id in list(agent.memory.summaries.keys()):
-    console.print(
-            Panel(
-                JSON(
-                    json.dumps(
-                        [
-                            summary.to_dict()
-                            for summary in agent.memory.get_session_summaries(user_id=user_id)
-                        ],
-                        indent=4,
-                    ),
-                ),
-                title=f"Summary for session_id: {agent.session_id}",
-                expand=True,
-            )
-        )
+- `quit`: Quit the game instantly
+- `!action`: Make Indy Perform an Action
+- `<thought>`: Make Indy Think about Something
+- `"speech"`: Make Indy Say Something
+""")
 
+# Displaying Welcome Message
+WelcomePanel = Panel(Intro, box=HEAVY, border_style = "orange4", padding=(1, 1))
+console.print(WelcomePanel)
 
+console.print(" ")
 
-exit_on = ["exit", "quit", "bye"]
+# Asking the User for Its Favourite Editor
+Editor = Prompt.ask("Before we Begin Our Adventure, what is your Favourite Text Editor? (nano, vim)")
+
+while Editor.lower() not in ["nano", "vim"]:
+    console.print(" ")
+    Editor = Prompt.ask("Only 'nano' and 'vim' are Supported for Editing Code Files, Now, what is your Favourite Text Editor?")
+
+# Displaying Begin Message
+console.print(" ")
+console.print("Great, Let's Start a New Adventure")
+console.print(" ")
+
+# Thick Line for Readability
+console.rule(style = "orange4", characters = "━")  
+console.print(" ")
+
+# Beginning Adventure
+Response: RunResponse = DMs.run("Let's Start a New Adventure")
+console.print(Markdown(Response.content))
+
+# Main Game Loop
 while True:
-    message = Prompt.ask(f"[bold] :sunglasses: {user} [/bold]")
-    if message in exit_on:
+    # Asking the User what Indy will !DO/<THINK>/"SAY"
+    console.print(" ")
+    AskUser = Prompt.ask('What Will [italic orange4]Indy[/italic orange4] [gold1]!DO[/gold1]/[chartreuse3]<THINK>[/chartreuse3]/[steel_blue1]"SAY"[/steel_blue1]')
+
+    # quit for Quitting the Game
+    if AskUser.lower() == "quit":
+        GoodbyePanel = Panel(Markdown("### Thanks for Playing Pyndiana Jones!"), box = HEAVY, border_style = "orange4", padding = (1, 1))
+        console.print(GoodbyePanel)
         break
 
-    agent.print_response(message=message, stream=True, markdown=True)
-    print_agent_memory(agent)
+    # For Every Other Input
+    else:
+        # Querying the Team of Agents
+        console.print(" ")
+        Response: RunResponse = DMs.run(AskUser)
+                
+        try:
+            # If the Answer is Printable
+            console.print(Markdown(Response.content))
+        except TypeError:
+            # If the Answer is Actually an Object (Code)
+            # Mkdir code Folder if it doesn't Exist
+            if not os.path.exists("./code"):
+                try:
+                    os.mkdir("./code")
+                except:
+                    print("An Error Occurred Whilist Trying to Create the code Folder")
 
+            # Get the Code to Prepopulate the Editor
+            ChallengeCode = Response.content.Challenge
 
-if __name__ == "__main__":
-    typer.run(main)
+            # Writing Code to File
+            with open("./code/Solution.py", "w") as f:
+                f.write(ChallengeCode)
+
+            # Opening the File with the Terminal Text Editor (Will Stop Execution of the Program)
+            subprocess.call([Editor, "--wait", "./code/Solution.py"])
+
+            # Readding the Content After Editing
+            with open("./code/Solution.py", 'r') as f:
+                SolutionCode = f.read()
+
+            # Sending the Solution to the Team of Agents and Querying Again
+            console.print(" ")
+            Response: RunResponse = DMs.run("Here's the Solution:\n" + SolutionCode)
+            console.print(Markdown(Response.content))

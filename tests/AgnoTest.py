@@ -27,7 +27,14 @@ os.environ.get("GOOGLE_API_KEY")
 # Setting Up Memory and Clearing it (All Sessions are Standalone)
 memory_db = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")
 memory = Memory(db = memory_db)
-memory.clear()
+
+# Check if the memory table has any entries before clearing
+# Check if there are existing memories before clearing
+existing_memories = memory.get_user_memories()  # Hypothetical method
+if existing_memories:
+    memory.clear()
+
+# memory.clear()
 
 
 from pydantic import BaseModel, Field
@@ -155,15 +162,40 @@ DMs = Team(
         "Make Sure you Are only Returning The Answer Without any Intros or Outros"
     ],
 )
+console = Console()
+
+br = Markdown("""---""")
+console.print(br)
+console.print(" ")
+Intro = Markdown("""
+### Welcome to Pyndiana Jones!
+
+This is a Roguelike, Text Based, and AI-Generated Game where You will Play as **Indiana Jones** - or _Indy_ - to Solve Enigmas in the form of Python Coding Challenges while You Progress Throughout the Narrative.
+There is No Right or Wrong Answer, your Successes and Mistakes will Shape the Narrative!
+""")
+console.print(Intro)
+console.print(" ")
+Editor = Prompt.ask("Before we Begin Our Adventure, what is your Favourite Text Editor? (nano, vim)")
+
+while Editor.lower() not in ["nano", "vim"]:
+    console.print(" ")
+    Editor = Prompt.ask("Only 'nano' and 'vim' are Supported for Editing Code Files, Now, what is your Favourite Text Editor?")
+console.print(" ")
+console.print("Great, Let's Start a New Adventure")
+
+console.print(" ")
+br = Markdown("""---""")
+console.print(br)
+console.print(" ")
+
 
 Response: RunResponse = DMs.run("Let's Start a New Adventure")
 #print(Response.content)
-console = Console()
 console.print(Markdown(Response.content))
 
 while True:
     console.print(" ")
-    AskUser = Prompt.ask("What Will Indy DO/THINK/SAY?", default = "")
+    AskUser = Prompt.ask('What Will [italic orange4]Indy[/italic orange4] [gold1]!DO[/gold1]/[chartreuse3]<THINK>[/chartreuse3]/[steel_blue1]"SAY"[/steel_blue1]')
 
     if AskUser.lower() == "quit":
         break
@@ -195,7 +227,7 @@ while True:
                 edited_content = tmp_file.read()
 
             # Use the edited content as needed
-            #console.print(edited_content)
+            console.print(edited_content)
 
             console.print(" ")
             Response2: RunResponse = DMs.run("Here's the Solution:\n" + edited_content)
