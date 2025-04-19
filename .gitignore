@@ -15,3 +15,5 @@ wheels/
 
 # Directories
 Old/
+tmp/
+code/
