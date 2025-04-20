@@ -9,6 +9,47 @@ from rich.prompt import Prompt
 import os
 from dotenv import load_dotenv
 import subprocess
+import re
+
+# Function to Format the Input Prompt
+def FormatInputPrompt(InputPrompt: str) -> str:
+    """
+    Finds every !…!, <…>, or "…" Segments in the InputText, 
+    Then Normalizes it to GENERIC_TAG + blank line + inner text, ...
+    Lastly Joins them with Blank Lines.
+    """
+
+    # Compiling the Pattern to Handle !…!, <…>, and "…"
+    DoThinkSayPattern = re.compile(
+        r'!(?P<i1>.*?)!'   # Action Wrapper
+        r'|<(?P<i2>.*?)>'  # Thought Wrapper
+        r'|"(?P<i3>.*?)"'  # Speech Wrapper
+    )
+
+    # Mapping Each Delimiter to the Normalized TAG
+    TagMap = {
+        '!': '!ACTION!',
+        '<': '<THINKING>',
+        '"': '"SPEECH"'
+    }
+
+    Outputs = []
+    for rgx in DoThinkSayPattern.finditer(InputPrompt):
+        # Finding Which Group Matched
+        if rgx.group('i1') is not None:
+            InnerText = rgx.group('i1').strip()
+            Delimiter = '!'
+        elif rgx.group('i2') is not None:
+            InnerText = rgx.group('i2').strip()
+            Delimiter = '<'
+        else:
+            InnerText = rgx.group('i3').strip()
+            Delimiter = '"'
+
+        Normalize = TagMap[delim]
+        Outputs.append(f"{Normalize}\n\n{InnerText}")
+
+    return "\n\n".join(Outputs)
 
 # Loading Env Variables
 load_dotenv()
@@ -28,9 +69,13 @@ There is No Right or Wrong Answer, your Successes and Mistakes will Shape the Na
 **Here is a List of Useful Commands (Inputs):**
 
 - `quit`: Quit the game instantly
-- `!action`: Make Indy Perform an Action
-- `<thought>`: Make Indy Think about Something
-- `"speech"`: Make Indy Say Something
+- `!Action!`: Make Indy Perform an Action
+- `<Thought>`: Make Indy Think or Reflect about Something
+- `"Speech"`: Make Indy Say Something
+
+**NOTE:** Commands can be Queried Sequentially, for Example:
+
+_<Hmmm, Maybe I can Find an Entrance to that Cave> !I Look Around for an Entrance!_
 """)
 
 # Displaying Welcome Message
@@ -63,7 +108,7 @@ console.print(Markdown(Response.content))
 while True:
     # Asking the User what Indy will !DO/<THINK>/"SAY"
     console.print(" ")
-    AskUser = Prompt.ask('What Will [italic orange4]Indy[/italic orange4] [gold1]!DO[/gold1]/[chartreuse3]<THINK>[/chartreuse3]/[steel_blue1]"SAY"[/steel_blue1]')
+    AskUser = Prompt.ask('What Will [italic orange4]Indy[/italic orange4] [gold1]!DO![/gold1]/[chartreuse3]<THINK>[/chartreuse3]/[steel_blue1]"SAY"[/steel_blue1]')
 
     # quit for Quitting the Game
     if AskUser.lower() == "quit":
@@ -75,8 +120,16 @@ while True:
     else:
         # Querying the Team of Agents
         console.print(" ")
-        Response: RunResponse = DMs.run(AskUser)
+
+        # Formatting the Prompt
+        try: 
+            FormattedPrompt = FormatInputPrompt(AskUser)   
+            Response: RunResponse = DMs.run(FormattedPrompt)
+        except:
+            # If It Fails, we Query Directly - Contains Typos 
+            Response: RunResponse = DMs.run(AskUser)    
                 
+        # Displaying the AI Message
         try:
             # If the Answer is Printable
             console.print(Markdown(Response.content))
