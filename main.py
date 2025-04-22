@@ -1,6 +1,21 @@
+'''
+import logging
+
+# Attach default handler (stdout)
+logging.basicConfig()                                    # :contentReference[oaicite:8]{index=8}
+
+# Emit all SQL statements
+logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)   # :contentReference[oaicite:9]{index=9}
+
+# Emit connection pool events (checkout/checkin)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)    
+'''
+
 # Importing Necessary Libraries
 from agno.agent import RunResponse
-from utils.Agents import DMs
+from agno.memory.v2.db.sqlite import SqliteMemoryDb
+from agno.memory.v2.memory import Memory, UserMemory
+from utils.Agents import InitializeAgents
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.box import HEAVY
@@ -46,7 +61,7 @@ def FormatInputPrompt(InputPrompt: str) -> str:
             InnerText = rgx.group('i3').strip()
             Delimiter = '"'
 
-        Normalize = TagMap[delim]
+        Normalize = TagMap[Delimiter]
         Outputs.append(f"{Normalize}\n\n{InnerText}")
 
     return "\n\n".join(Outputs)
@@ -54,6 +69,19 @@ def FormatInputPrompt(InputPrompt: str) -> str:
 # Loading Env Variables
 load_dotenv()
 os.environ.get("GOOGLE_API_KEY")
+
+# Initializing Memory for the Agents
+# Setting Up Memory and Clearing it (All Sessions are Standalone)
+# MemoryDB = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")
+# AgentsMemory = Memory(model = Gemini(id="gemini-2.0-flash-exp"), db = MemoryDB)
+# AgentsMemory = Memory(db = MemoryDB)
+
+
+# Check if there Are Memories before Clearing or Will Throw an Error
+# ExistingMemory = AgentsMemory.get_user_memories()  
+# if ExistingMemory:
+# MemoryDB.clear()
+# AgentsMemory.clear()
 
 # Instantiating Console Object
 console = Console()
@@ -100,15 +128,28 @@ console.print(" ")
 console.rule(style = "orange4", characters = "━")  
 console.print(" ")
 
+# Defining the Dungeon Master
+DungeonMaster = InitializeAgents()
+
+DungeonMaster.memory.clear()
+
 # Beginning Adventure
-Response: RunResponse = DMs.run("Let's Start a New Adventure")
+Response: RunResponse = DungeonMaster.run("Let's Start a New Adventure") # , user_id = "PyIndy")
 console.print(Markdown(Response.content))
+DungeonMaster.memory.add_user_memory(UserMemory(Response.content))
+
+DungeonMaster.memory.create_user_memories(message = "My Name is Andrea")
 
 # Main Game Loop
 while True:
+    memories = DungeonMaster.memory.get_user_memories("PyIndy")
+    print("Indy's memories:")
+    for i, m in enumerate(memories):
+        print(f"{i}: {m.memory}")
+
     # Asking the User what Indy will !DO/<THINK>/"SAY"
     console.print(" ")
-    AskUser = Prompt.ask('What Will [italic orange4]Indy[/italic orange4] [gold1]!DO![/gold1]/[chartreuse3]<THINK>[/chartreuse3]/[steel_blue1]"SAY"[/steel_blue1]')
+    AskUser = Prompt.ask('What Will [italic bold orange4]Indy[/italic bold orange4] [bold gold1]!DO![/bold gold1]/[bold chartreuse3]<THINK>[/bold chartreuse3]/[bold steel_blue1]"SAY"[/bold steel_blue1]')
 
     # quit for Quitting the Game
     if AskUser.lower() == "quit":
@@ -124,15 +165,16 @@ while True:
         # Formatting the Prompt
         try: 
             FormattedPrompt = FormatInputPrompt(AskUser)   
-            Response: RunResponse = DMs.run(FormattedPrompt)
+            Response: RunResponse = DungeonMaster.run(FormattedPrompt) # , user_id = "PyIndy")
         except:
             # If It Fails, we Query Directly - Contains Typos 
-            Response: RunResponse = DMs.run(AskUser)    
+            Response: RunResponse = DungeonMaster.run(AskUser) # , user_id = "PyIndy")    
                 
         # Displaying the AI Message
         try:
             # If the Answer is Printable
             console.print(Markdown(Response.content))
+
         except TypeError:
             # If the Answer is Actually an Object (Code)
             # Mkdir code Folder if it doesn't Exist
@@ -150,7 +192,7 @@ while True:
                 f.write(ChallengeCode)
 
             # Opening the File with the Terminal Text Editor (Will Stop Execution of the Program)
-            subprocess.call([Editor, "--wait", "./code/Solution.py"])
+            subprocess.call([Editor, "./code/Solution.py"])
 
             # Readding the Content After Editing
             with open("./code/Solution.py", 'r') as f:
@@ -158,5 +200,5 @@ while True:
 
             # Sending the Solution to the Team of Agents and Querying Again
             console.print(" ")
-            Response: RunResponse = DMs.run("Here's the Solution:\n" + SolutionCode)
+            Response: RunResponse = DungeonMaster.run("Here's the Solution:\n" + SolutionCode) # , user_id = "PyIndy")
             console.print(Markdown(Response.content))

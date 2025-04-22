@@ -4,7 +4,7 @@ requires-python = ">=3.13"
 
 [[package]]
 name = "agno"
-version = "1.3.2"
+version = "1.3.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "docstring-parser" },
@@ -20,9 +20,9 @@ dependencies = [
     { name = "typer" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/14/ab367affeee22533a5ba5ce009b3d31c988e817e272ab8e86df4867dba74/agno-1.3.2.tar.gz", hash = "sha256:55314d9985a0e9a58b172d75115845daf420370c8335c4b527194bd6aceb1526", size = 499136 }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/3b/d868deeaa84ed918455c8fb3f71c8b93ff4920761ccdb32f1401384ca289/agno-1.3.5.tar.gz", hash = "sha256:6d2bad3de7e18efee00cee3f19bb80ccd3f58e109f36d0d147fb640232de4096", size = 508980 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/00/df2a96aa4daf1484bdb6d370c6504df16ecd2186366966d4a94f4c816a62/agno-1.3.2-py3-none-any.whl", hash = "sha256:d4154524005edc3ad25c3138dcf6114ec62915e577a1f0283960e5da8799d120", size = 656332 },
+    { url = "https://files.pythonhosted.org/packages/a6/64/f351d78d8c903cfb217151458c3fe4a7791040fe253f6e3da8a09f023e94/agno-1.3.5-py3-none-any.whl", hash = "sha256:eab073adbe7f8db87a4bb6a61d8bbd8fe922422917ba40d48f957e9b44018f39", size = 668683 },
 ]
 
 [[package]]
@@ -331,15 +331,16 @@ wheels = [
 
 [[package]]
 name = "pydantic-settings"
-version = "2.8.1"
+version = "2.9.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/88/82/c79424d7d8c29b994fb01d277da57b0a9b09cc03c3ff875f9bd8a86b2145/pydantic_settings-2.8.1.tar.gz", hash = "sha256:d5c663dfbe9db9d5e1c646b2e161da12f0d734d422ee56f567d0ea2cee4e8585", size = 83550 }
+sdist = { url = "https://files.pythonhosted.org/packages/67/1d/42628a2c33e93f8e9acbde0d5d735fa0850f3e6a2f8cb1eb6c40b9a732ac/pydantic_settings-2.9.1.tar.gz", hash = "sha256:c509bf79d27563add44e8446233359004ed85066cd096d8b510f715e6ef5d268", size = 163234 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/0b/53/a64f03044927dc47aafe029c42a5b7aabc38dfb813475e0e1bf71c4a59d0/pydantic_settings-2.8.1-py3-none-any.whl", hash = "sha256:81942d5ac3d905f7f3ee1a70df5dfb62d5569c12f51a5a647defc1c3d9ee2e9c", size = 30839 },
+    { url = "https://files.pythonhosted.org/packages/b6/5f/d6d641b490fd3ec2c4c13b4244d68deea3a1b970a97be64f34fb5504ff72/pydantic_settings-2.9.1-py3-none-any.whl", hash = "sha256:59b4f431b1defb26fe620c71a7d3968a710d719f5f4cdbbdb7926edeb770f6ef", size = 44356 },
 ]
 
 [[package]]
