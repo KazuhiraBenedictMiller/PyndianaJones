@@ -2,22 +2,34 @@
 from agno.agent import Agent
 from agno.team.team import Team
 from agno.memory.v2.memory import Memory
-from agno.memory.v2.db.sqlite import SqliteMemoryDb
-
 from agno.models.google import Gemini
 from pydantic import BaseModel, Field
+from typing import List
 import os
 from dotenv import load_dotenv
-from utils.Prompts import IntroInstructions, NarrativeInstructions, QuizInstructions, TeamInstructions 
+from utils.Prompts import IntroInstructions, NarrativeInstructions, QuizInstructions, MemoryInstructions, TeamInstructions 
 
 # Defining JSON Response Schema for the Quiz Response
 class PythonChallenge(BaseModel):
-    Challenge: str = Field(
+    NarrativeContext: str = Field(
+        ..., description = "The Narrative Context that Lead to the Challenge."
+    )
+
+    PythonCodingChallenge: str = Field(
         ..., description = "The Appropriate Python Coding Challenge Given the Narrative Context."
     )
 
+# Defining the JSON Response Schema for the Memories
+class Memories(BaseModel):
+    Memories: List[str] = Field(
+        ..., description = "The List of Memories given the Narrative Context."
+    )
+
 # Function to Initialize the Team of Agents
-def InitializeAgents() -> Team:
+def InitializeAgents(memory: Memory) -> Team:
+    # Clearing the Memory
+    memory.clear()
+
     # Creating the Intro Agent to Set Up the Story 
     IntroAgent = Agent(
         name = "Introductory Agent",
@@ -26,12 +38,10 @@ def InitializeAgents() -> Team:
         model = Gemini(id = "gemini-2.0-flash", temperature = 2),
         instructions = IntroInstructions,
         markdown = True,
-        add_history_to_messages = True,
-        num_history_responses = 3,
-        memory = Memory(db = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")),
-        # For Some Reason Agentic Generation of Memories Doesn't Work.
-        # Also, I want more Granular Control Over the Memories.
-        enable_user_memories = True
+        # add_history_to_messages = True,
+        # num_history_responses = 3,
+        memory = memory,
+        # enable_user_memories = True
     )
 
     # Creating the Narrative Agent to Drive the Narrative
@@ -43,11 +53,9 @@ def InitializeAgents() -> Team:
         instructions = NarrativeInstructions,
         markdown = True,
         add_history_to_messages = True,
-        num_history_responses = 3,
-        memory = Memory(db = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")),
-        # For Some Reason Agentic Generation of Memories Doesn't Work.
-        # Also, I want more Granular Control Over the Memories.
-        enable_user_memories = True
+        num_history_responses = 5,
+        memory = memory,
+        # enable_user_memories = True
     )
 
     # Creating the Agent to Actually Create the Challenges
@@ -59,16 +67,30 @@ def InitializeAgents() -> Team:
         instructions = QuizInstructions,
         markdown = True,
         add_history_to_messages = True,
-        num_history_responses = 3,
-        memory = Memory(db = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")),
-        # For Some Reason Agentic Generation of Memories Doesn't Work.
-        # Also, I want more Granular Control Over the Memories.
-        enable_user_memories = True,
+        num_history_responses = 5,
+        memory = memory,
+        # enable_user_memories = True,
         response_model = PythonChallenge
     )
 
-    # Creating the Multi-Agent System
-    DMs = Team(
+    # For Some Reason Agentic Generation of Memories Doesn't Work for Narrative Type of Applications.
+    # Also, I want more Granular Control Over the Memories.
+    MemoryAgent =  Agent(
+        name = "Memory Agent",
+        role = "Given the Narrative, the Challenges, and the Overall Context, it Generates Contextual Memories that are Key Facts for the Narrative Story.",
+        user_id = "PyIndy",
+        model = Gemini(id = "gemini-2.0-flash"),
+        instructions = MemoryInstructions,
+        markdown = True,
+        add_history_to_messages = True,
+        num_history_responses = 5,
+        memory = memory,    
+        # enable_user_memories = True,
+        response_model = Memories
+    )
+
+    # Creating the Multi-Agent/SubTeam System
+    DungeonMaster = Team(
         name = "Dungeon Masters Team",
         mode = "route",
         model = Gemini(id = "gemini-2.0-flash"),
@@ -78,10 +100,10 @@ def InitializeAgents() -> Team:
         markdown = True,
         share_member_interactions = True,
         instructions = TeamInstructions,
-        memory = Memory(db = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")),
+        memory = memory,
         read_team_history = True,
         enable_agentic_context = True, 
         enable_user_memories = True
     )
 
-    return DMs
+    return MemoryAgent, DungeonMaster 

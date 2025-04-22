@@ -1,16 +1,3 @@
-'''
-import logging
-
-# Attach default handler (stdout)
-logging.basicConfig()                                    # :contentReference[oaicite:8]{index=8}
-
-# Emit all SQL statements
-logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)   # :contentReference[oaicite:9]{index=9}
-
-# Emit connection pool events (checkout/checkin)
-logging.getLogger("sqlalchemy.pool").setLevel(logging.INFO)    
-'''
-
 # Importing Necessary Libraries
 from agno.agent import RunResponse
 from agno.memory.v2.db.sqlite import SqliteMemoryDb
@@ -25,6 +12,7 @@ import os
 from dotenv import load_dotenv
 import subprocess
 import re
+from time import sleep
 
 # Function to Format the Input Prompt
 def FormatInputPrompt(InputPrompt: str) -> str:
@@ -72,16 +60,15 @@ os.environ.get("GOOGLE_API_KEY")
 
 # Initializing Memory for the Agents
 # Setting Up Memory and Clearing it (All Sessions are Standalone)
-# MemoryDB = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")
-# AgentsMemory = Memory(model = Gemini(id="gemini-2.0-flash-exp"), db = MemoryDB)
-# AgentsMemory = Memory(db = MemoryDB)
+MemoryDB = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")
+AgentsMemory = Memory(db = MemoryDB)
 
 
 # Check if there Are Memories before Clearing or Will Throw an Error
-# ExistingMemory = AgentsMemory.get_user_memories()  
-# if ExistingMemory:
-# MemoryDB.clear()
-# AgentsMemory.clear()
+ExistingMemory = AgentsMemory.get_user_memories()  
+if ExistingMemory:
+    MemoryDB.clear()
+    AgentsMemory.clear()
 
 # Instantiating Console Object
 console = Console()
@@ -128,24 +115,41 @@ console.print(" ")
 console.rule(style = "orange4", characters = "━")  
 console.print(" ")
 
-# Defining the Dungeon Master
-DungeonMaster = InitializeAgents()
+# Defining the Dungeon Master and Memory Agent
+MemoryAgent, DungeonMaster = InitializeAgents(AgentsMemory)
 
+# Reduntant, but Just in Case
 DungeonMaster.memory.clear()
+MemoryAgent.memory.clear()
 
 # Beginning Adventure
-Response: RunResponse = DungeonMaster.run("Let's Start a New Adventure") # , user_id = "PyIndy")
+Response: RunResponse = DungeonMaster.run("Let's Start a New Adventure", user_id = "PyIndy")
 console.print(Markdown(Response.content))
-DungeonMaster.memory.add_user_memory(UserMemory(Response.content))
 
-DungeonMaster.memory.create_user_memories(message = "My Name is Andrea")
+# Generating Memories
+Mems: RunResponse = MemoryAgent.run(Response.content, user_id = "PyIndy")
+
+# Adding Memories
+# Adding Memories to the Dungeon Master
+for m in Mems.content.Memories:
+    DungeonMaster.memory.add_user_memory(UserMemory(m), user_id = "PyIndy")
 
 # Main Game Loop
 while True:
+    
+    # Debugging Memories
+    console.rule(style = "orange4", characters = "━")  
+    console.print("")
+
     memories = DungeonMaster.memory.get_user_memories("PyIndy")
+
     print("Indy's memories:")
     for i, m in enumerate(memories):
         print(f"{i}: {m.memory}")
+
+    console.print("")   
+    console.rule(style = "orange4", characters = "━")  
+    console.print("")
 
     # Asking the User what Indy will !DO/<THINK>/"SAY"
     console.print(" ")
@@ -155,6 +159,8 @@ while True:
     if AskUser.lower() == "quit":
         GoodbyePanel = Panel(Markdown("### Thanks for Playing Pyndiana Jones!"), box = HEAVY, border_style = "orange4", padding = (1, 1))
         console.print(GoodbyePanel)
+        DungeonMaster.memory.clear()
+        MemoryAgent.memory.clear()
         break
 
     # For Every Other Input
@@ -169,7 +175,7 @@ while True:
         except:
             # If It Fails, we Query Directly - Contains Typos 
             Response: RunResponse = DungeonMaster.run(AskUser) # , user_id = "PyIndy")    
-                
+
         # Displaying the AI Message
         try:
             # If the Answer is Printable
@@ -184,12 +190,20 @@ while True:
                 except:
                     print("An Error Occurred Whilist Trying to Create the code Folder")
 
+            # Getting the Context Leading to the Challenge
+            Context = Response.content.NarrativeContext
+
             # Get the Code to Prepopulate the Editor
-            ChallengeCode = Response.content.Challenge
+            ChallengeCode = Response.content.PythonCodingChallenge
+
+            console.print(Markdown(Context))
 
             # Writing Code to File
             with open("./code/Solution.py", "w") as f:
                 f.write(ChallengeCode)
+
+            # Giving User the Time to Read
+            sleep (3)
 
             # Opening the File with the Terminal Text Editor (Will Stop Execution of the Program)
             subprocess.call([Editor, "./code/Solution.py"])
