@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List
 import os
 from dotenv import load_dotenv
-from utils.Prompts import IntroInstructions, NarrativeInstructions, QuizInstructions, MemoryInstructions, TeamInstructions 
+from utils.Prompts import IntroInstructions, NarrativeInstructions, GenerateQuizInstructions, CheckQuizInstructions, MemoryInstructions, TeamInstructions 
 
 # Defining JSON Response Schema for the Quiz Response
 class PythonChallenge(BaseModel):
@@ -49,7 +49,7 @@ def InitializeAgents(memory: Memory) -> Team:
         name = "Narrative Agent",
         role = "Given the Story, it Keeps the Storytelling Going, Aligned with the Narrative and the Challenges Given to the User.",
         user_id = "PyIndy",
-        model = Gemini(id = "gemini-2.0-flash"),
+        model = Gemini(id = "gemini-2.0-flash", temperature = 2),
         instructions = NarrativeInstructions,
         markdown = True,
         add_history_to_messages = True,
@@ -59,18 +59,32 @@ def InitializeAgents(memory: Memory) -> Team:
     )
 
     # Creating the Agent to Actually Create the Challenges
-    QuizAgent = Agent(
-        name = "Quiz Agent",
-        role = "Given the Narrative, it Generates Python Coding Challenges for the User in a Narrative Way.",
+    CreateQuizAgent = Agent(
+        name = "Generate Quiz Agent",
+        role = "Given the Narrative, it Generates Python Coding Challenges for the Player in a Narrative Way.",
         user_id = "PyIndy",
         model = Gemini(id = "gemini-2.0-flash"),
-        instructions = QuizInstructions,
+        instructions = GenerateQuizInstructions,
         markdown = True,
         add_history_to_messages = True,
         num_history_responses = 5,
         memory = memory,
         # enable_user_memories = True,
         response_model = PythonChallenge
+    )
+    
+    # Creating the Agent to Check the Outcome of the Challenges
+    CheckQuizAgent = Agent(
+        name = "Check Quiz Agent",
+        role = "Given the Python Coding Challenge, it Checks if the Player's Code is Correct and Drives the Narrative Accordingly.",
+        user_id = "PyIndy",
+        model = Gemini(id = "gemini-2.0-flash"),
+        instructions = CheckQuizInstructions,
+        markdown = True,
+        add_history_to_messages = True,
+        num_history_responses = 5,
+        memory = memory,
+        # enable_user_memories = True,
     )
 
     # For Some Reason Agentic Generation of Memories Doesn't Work for Narrative Type of Applications.
@@ -82,8 +96,8 @@ def InitializeAgents(memory: Memory) -> Team:
         model = Gemini(id = "gemini-2.0-flash"),
         instructions = MemoryInstructions,
         markdown = True,
-        add_history_to_messages = True,
-        num_history_responses = 5,
+        # add_history_to_messages = True,
+        # num_history_responses = 5,
         memory = memory,    
         # enable_user_memories = True,
         response_model = Memories
@@ -96,7 +110,7 @@ def InitializeAgents(memory: Memory) -> Team:
         model = Gemini(id = "gemini-2.0-flash"),
         user_id = "PyIndy",
         enable_team_history = True,
-        members = [IntroAgent, NarrativeAgent, QuizAgent],
+        members = [IntroAgent, NarrativeAgent, CreateQuizAgent, CheckQuizAgent],
         markdown = True,
         share_member_interactions = True,
         instructions = TeamInstructions,

@@ -8,51 +8,11 @@ from rich.markdown import Markdown
 from rich.box import HEAVY
 from rich.panel import Panel
 from rich.prompt import Prompt
+from utils.Helpers import FormatInputPrompt, GeneratePushMemories
 import os
 from dotenv import load_dotenv
 import subprocess
-import re
 from time import sleep
-
-# Function to Format the Input Prompt
-def FormatInputPrompt(InputPrompt: str) -> str:
-    """
-    Finds every !…!, <…>, or "…" Segments in the InputText, 
-    Then Normalizes it to GENERIC_TAG + blank line + inner text, ...
-    Lastly Joins them with Blank Lines.
-    """
-
-    # Compiling the Pattern to Handle !…!, <…>, and "…"
-    DoThinkSayPattern = re.compile(
-        r'!(?P<i1>.*?)!'   # Action Wrapper
-        r'|<(?P<i2>.*?)>'  # Thought Wrapper
-        r'|"(?P<i3>.*?)"'  # Speech Wrapper
-    )
-
-    # Mapping Each Delimiter to the Normalized TAG
-    TagMap = {
-        '!': '!ACTION!',
-        '<': '<THINKING>',
-        '"': '"SPEECH"'
-    }
-
-    Outputs = []
-    for rgx in DoThinkSayPattern.finditer(InputPrompt):
-        # Finding Which Group Matched
-        if rgx.group('i1') is not None:
-            InnerText = rgx.group('i1').strip()
-            Delimiter = '!'
-        elif rgx.group('i2') is not None:
-            InnerText = rgx.group('i2').strip()
-            Delimiter = '<'
-        else:
-            InnerText = rgx.group('i3').strip()
-            Delimiter = '"'
-
-        Normalize = TagMap[Delimiter]
-        Outputs.append(f"{Normalize}\n\n{InnerText}")
-
-    return "\n\n".join(Outputs)
 
 # Loading Env Variables
 load_dotenv()
@@ -62,7 +22,6 @@ os.environ.get("GOOGLE_API_KEY")
 # Setting Up Memory and Clearing it (All Sessions are Standalone)
 MemoryDB = SqliteMemoryDb(table_name = "memory", db_file = "tmp/memory.db")
 AgentsMemory = Memory(db = MemoryDB)
-
 
 # Check if there Are Memories before Clearing or Will Throw an Error
 ExistingMemory = AgentsMemory.get_user_memories()  
@@ -125,31 +84,14 @@ MemoryAgent.memory.clear()
 # Beginning Adventure
 Response: RunResponse = DungeonMaster.run("Let's Start a New Adventure", user_id = "PyIndy")
 console.print(Markdown(Response.content))
-
-# Generating Memories
-Mems: RunResponse = MemoryAgent.run(Response.content, user_id = "PyIndy")
-
-# Adding Memories
-# Adding Memories to the Dungeon Master
-for m in Mems.content.Memories:
-    DungeonMaster.memory.add_user_memory(UserMemory(m), user_id = "PyIndy")
+        
+# Generating and Pushing Memories
+GeneratePushMemories(MemoryAgent, DungeonMaster, Response.content)
 
 # Main Game Loop
 while True:
-    
-    # Debugging Memories
-    console.rule(style = "orange4", characters = "━")  
-    console.print("")
-
-    memories = DungeonMaster.memory.get_user_memories("PyIndy")
-
-    print("Indy's memories:")
-    for i, m in enumerate(memories):
-        print(f"{i}: {m.memory}")
-
     console.print("")   
     console.rule(style = "orange4", characters = "━")  
-    console.print("")
 
     # Asking the User what Indy will !DO/<THINK>/"SAY"
     console.print(" ")
@@ -172,14 +114,20 @@ while True:
         try: 
             FormattedPrompt = FormatInputPrompt(AskUser)   
             Response: RunResponse = DungeonMaster.run(FormattedPrompt) # , user_id = "PyIndy")
+            # Generating and Pushing Memories for Indy's Action
+            GeneratePushMemories(MemoryAgent, DungeonMaster, FormattedPrompt)
         except:
             # If It Fails, we Query Directly - Contains Typos 
             Response: RunResponse = DungeonMaster.run(AskUser) # , user_id = "PyIndy")    
+            # Generating and Pushing Memories for Indy's Action
+            GeneratePushMemories(MemoryAgent, DungeonMaster, AskUser)
 
         # Displaying the AI Message
         try:
             # If the Answer is Printable
             console.print(Markdown(Response.content))
+            # Generating and Pushing Memories for Indy's Action
+            GeneratePushMemories(MemoryAgent, DungeonMaster, Response.content)
 
         except TypeError:
             # If the Answer is Actually an Object (Code)
@@ -195,6 +143,11 @@ while True:
 
             # Get the Code to Prepopulate the Editor
             ChallengeCode = Response.content.PythonCodingChallenge
+
+            FullMessage = Context + "\n" + ChallengeCode
+
+            # Generating and Pushing Memories
+            GeneratePushMemories(MemoryAgent, DungeonMaster, FullMessage)
 
             console.print(Markdown(Context))
 
@@ -212,7 +165,15 @@ while True:
             with open("./code/Solution.py", 'r') as f:
                 SolutionCode = f.read()
 
+            FullSolution = ";CODE_SOLUTION;:\n" + SolutionCode
+
+            # Generating and Pushing Memories
+            GeneratePushMemories(MemoryAgent, DungeonMaster, FullSolution)            
+
             # Sending the Solution to the Team of Agents and Querying Again
             console.print(" ")
-            Response: RunResponse = DungeonMaster.run("Here's the Solution:\n" + SolutionCode) # , user_id = "PyIndy")
+            Response: RunResponse = DungeonMaster.run(Solution, user_id = "PyIndy")
             console.print(Markdown(Response.content))
+
+            # Generating and Pushing Memories
+            GeneratePushMemories(MemoryAgent, DungeonMaster, Response.content)
