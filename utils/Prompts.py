@@ -89,7 +89,7 @@ GenerateQuizInstructions = dedent("""\
 
     # EXPECTED OUTPUT:
         - The Expected output is Divided in 2:
-            - NarrativeContext: The Narrative Context that Led to the Python Coding Challenge.
+            - NarrativeContext: A Narrative Introduction to the Challenge, which Must be True to the Main Story and to the Memories.
             - PythonCodingChallenge: The Actual Python Coding Challenge, that the Player will Have to Solve to Progress Throughout the Story.\
 """)
 

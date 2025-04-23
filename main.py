@@ -172,7 +172,7 @@ while True:
 
             # Sending the Solution to the Team of Agents and Querying Again
             console.print(" ")
-            Response: RunResponse = DungeonMaster.run(Solution, user_id = "PyIndy")
+            Response: RunResponse = DungeonMaster.run(FullSolution, user_id = "PyIndy")
             console.print(Markdown(Response.content))
 
             # Generating and Pushing Memories
